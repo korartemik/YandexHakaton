@@ -1,9 +1,11 @@
 package stateful
 
 import (
+	"awesomeProject1/config"
 	"context"
 
 	"awesomeProject1/alice/api"
+	aliceapi "awesomeProject1/alice/api"
 	"awesomeProject1/cache"
 	"awesomeProject1/errors"
 	"awesomeProject1/log"
@@ -12,6 +14,7 @@ import (
 
 type Handler struct {
 	logger           *zap.Logger
+	config           *config.Config
 	stateScenarios   map[api.State]scenario
 	scratchScenarios []scenario
 }
@@ -19,6 +22,7 @@ type Handler struct {
 func NewHandler(deps Deps) (*Handler, error) {
 	h := &Handler{
 		logger: deps.GetLogger(),
+		config: deps.GetConfig(),
 	}
 	h.setupScenarios()
 	return h, nil
@@ -37,14 +41,22 @@ func (h *Handler) Handle(ctx context.Context, req *api.Request) (*api.Response, 
 }
 
 func (h *Handler) handle(ctx context.Context, req *api.Request) (*api.Response, errors.Err) {
+	var buttons []*aliceapi.Button
+	buttons = append(buttons, &aliceapi.Button{Title: "Что ты умеешь?"})
+	buttons = append(buttons, &aliceapi.Button{Title: "Расскажи про"})
+	buttons = append(buttons, &aliceapi.Button{Title: "Задай мне вопрос по теме"})
+	buttons = append(buttons, &aliceapi.Button{Title: "Узнай о"})
 	if req.Session.New || req.AccountLinkingComplete != nil {
+		text, tts := config.GetGreeting()
 		return &api.Response{Response: &api.Resp{
-			Text: "Давайте я помогу вам с подготовкой к экзамену!",
-		}}, nil
+			Text:    text,
+			TTS:     tts,
+			Buttons: buttons},
+		}, nil
 	}
 	if state := req.State.Session; state.State != api.StateInit {
 		intents := req.Request.NLU.Intents
-		if req.Request.Type == api.RequestTypeSimple && intents.Cancel != nil || intents.Reject != nil {
+		if intents.Reject != nil {
 			return &api.Response{
 				Response: &api.Resp{Text: "Чем я могу помочь?"},
 			}, nil
@@ -69,8 +81,10 @@ func (h *Handler) handle(ctx context.Context, req *api.Request) (*api.Response, 
 			return resp, err
 		}
 	}
+	text, tts := config.GetPhraseDoNotUnderstand()
 	return &api.Response{Response: &api.Resp{
-		Text: "Я вас не поняла",
+		Text: text,
+		TTS:  tts,
 	}}, nil
 }
 

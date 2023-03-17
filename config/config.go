@@ -1,24 +1,39 @@
 package config
 
 import (
+	"bytes"
 	"encoding/base64"
+	"encoding/json"
 	"fmt"
+	"log"
+	"net/http"
 	"os"
 )
 
 type Config struct {
-	IAMToken string
-
-	KeyFromChatGPT   string
-	DatabaseEndpoint string
+	OAuthToken            string
+	KeyFromChatGPT        string
+	DatabaseEndpoint      string
+	FunctionEndpoint      string
+	FunctionQandAEndpoint string
+	IAMToken              string
 }
 
 func Get() *Config {
 	return &Config{
-		IAMToken:         "y0_AgAAAAAEqlnXAATuwQAAAADeYHM8MglXaQBDSvO684CBJ_RLs3H3ZyI",
-		KeyFromChatGPT:   "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",
-		DatabaseEndpoint: "grpcs://ydb.serverless.yandexcloud.net:2135/ru-central1/b1gsm4ottbrmg1pmmc79/etn0j1l74mga5f3vfeol",
+		OAuthToken:            requireString("OAUTH_TOKEN"),
+		KeyFromChatGPT:        requireString("KEY_CHAT_GPT"),
+		DatabaseEndpoint:      requireString("DATABASE_ENDPOINT"),
+		FunctionEndpoint:      requireString("FUNCTION_ENDPOINT"),
+		FunctionQandAEndpoint: requireString("FUNCTION_QA_ENDPOINT"),
+		IAMToken:              "",
 	}
+}
+
+func NewConfig() *Config {
+	c := Get()
+	c.createIAMToken()
+	return c
 }
 
 func requireBytes(name string) []byte {
@@ -35,4 +50,26 @@ func requireString(name string) string {
 		panic(fmt.Sprintf("required env var %s not found", name))
 	}
 	return res
+}
+
+func (c *Config) createIAMToken() {
+	values := map[string]string{"yandexPassportOauthToken": c.OAuthToken}
+
+	jsonValue, _ := json.Marshal(values)
+	fmt.Println(string(jsonValue))
+	resp, _ := http.Post("https://iam.api.cloud.yandex.net/iam/v1/tokens", "application/json", bytes.NewBuffer(jsonValue))
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		panic(fmt.Sprintf("Error with generating token %s", resp.Status))
+	}
+	var data struct {
+		IAMToken string `json:"iamToken"`
+	}
+	err := json.NewDecoder(resp.Body).Decode(&data)
+	if err != nil {
+		fmt.Println("Error with generating token")
+		panic(err)
+	}
+	c.IAMToken = data.IAMToken
+	log.Printf("IAMToken create succses")
 }

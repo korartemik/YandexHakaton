@@ -5,20 +5,18 @@ type State string
 const (
 	StateInit                  State = ""
 	StateWaitAnswerFromChatGPT State = "WAIT_ANSWER"
-	StateCreateReqName         State = "CREATE_REQ_NAME"
-	StateDelReqConfirm         State = "DELETE_REQ_CNFRM"
-	StateDelReqName            State = "DELETE_REQ_NAME"
-	StateViewReqName           State = "VIEW_REQ_NAME"
-	StateAddItemReqItem        State = "ADD_ITM_REQ_ITM"
-	StateAddItemReqList        State = "ADD_ITM_REQ_LST"
-	StateDelItemReqItem        State = "DEL_ITM_REQ_ITM"
-	StateDelItemReqList        State = "DEL_ITM_REQ_CNFRM"
+	StateCreateReqQuestion     State = "CREATE_REQ_QUESTION"
+	StateCreateReqAskBot       State = "CREATE_REQ_ASK"
+	StateCreateReqTheme        State = "CREATE_REQ_THEME"
+	StateNextQuestion          State = "NEXT_QUESTION"
+	StateWaitAnswerFromClient  State = "WAIT_CLIENT_ANSWER"
 )
 
 type StateData struct {
-	State    State
-	ListName string
-	ItemText string
+	State          State
+	AnswerID       string
+	NextQuestionID string
+	ThemeID        string
 }
 
 func (s *StateData) GetState() State {
